@@ -1,0 +1,38 @@
+# Secretos y configuración local
+.env
+.env.local
+*.env.local
+
+# Artefactos de compilación de .NET
+**/bin/
+**/obj/
+**/out/
+**/publish/
+*.user
+*.suo
+
+# Cliente React
+**/node_modules/
+**/dist/
+**/.vite/
+**/*.tsbuildinfo
+
+# Pruebas y cobertura
+**/TestResults/
+**/coverage/
+*.trx
+
+# Control de versiones y CI
+.git/
+.gitignore
+.github/
+.vs/
+.vscode/
+.idea/
+
+# Documentación y utilidades que no afectan la imagen
+README.md
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+LICENSE

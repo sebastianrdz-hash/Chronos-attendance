@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  backend:
+    name: Backend (.NET 10)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Instalar .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restaurar dependencias
+        run: dotnet restore Chronos.sln
+
+      - name: Compilar
+        run: dotnet build Chronos.sln --configuration Release --no-restore
+
+      - name: Pruebas de dominio
+        run: dotnet test tests/Chronos.Domain.Tests --configuration Release --no-build --logger "trx;LogFileName=dominio.trx"
+
+      # Testcontainers levanta su propio PostgreSQL usando el Docker del runner,
+      # así que no hace falta declarar un service container aquí.
+      - name: Pruebas de integración
+        run: dotnet test tests/Chronos.Api.Tests --configuration Release --no-build --logger "trx;LogFileName=integracion.trx"
+
+      - name: Publicar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas
+          path: '**/TestResults/*.trx'
+          if-no-files-found: ignore
+
+  frontend:
+    name: Cliente React
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Instalar Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Compilar (incluye chequeo de tipos)
+        run: npm run build
+
+  migraciones:
+    name: La migración aplica en limpio
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: chronos
+          POSTGRES_USER: chronos
+          POSTGRES_PASSWORD: chronos_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chronos -d chronos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      ConnectionStrings__Postgres: Host=localhost;Port=5432;Database=chronos;Username=chronos;Password=chronos_ci
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Instalar .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restaurar herramientas
+        run: dotnet tool restore
+
+      # Verifica que un despliegue desde cero funcione, no solo que el modelo compile.
+      - name: Aplicar migraciones sobre una base vacía
+        run: dotnet ef database update --project src/Chronos.Infrastructure --startup-project src/Chronos.Api
+
+      - name: Confirmar que el modelo no tiene cambios sin migrar
+        run: |
+          dotnet ef migrations has-pending-model-changes \
+            --project src/Chronos.Infrastructure \
+            --startup-project src/Chronos.Api
