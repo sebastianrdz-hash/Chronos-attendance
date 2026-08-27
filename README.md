@@ -10,6 +10,16 @@ Construido con ASP.NET Core 10 (Minimal APIs), React 19 + TypeScript y PostgreSQ
 > departamentos, sedes y turnos, con autorización por rol aplicada en el servidor y una
 > interfaz distinta para cada perfil. 125 pruebas automatizadas en verde.
 
+### Demo
+
+| | URL |
+|---|---|
+| Cliente | https://chronos-attendance-ashy.vercel.app |
+| API + Swagger | https://chronos-attendance.onrender.com/swagger |
+| Health check | https://chronos-attendance.onrender.com/health/ready |
+
+Las cuentas son las mismas de la semilla (`admin@chronos.mx` / `Chronos#2026`, y las de Supervisor y Empleado). El cliente corre en Vercel y no hiberna; la API está en el plan gratuito de Render y **sí se duerme** tras un rato sin tráfico. Un monitor pega cada 5 minutos a `/health/ready` para mantenerla despierta. Si ese ping falla, la página de login abre al instante y la espera aparece al pulsar **Entrar** (a veces más de un minuto): no es un error de la aplicación.
+
 ---
 
 ## La idea central: una checada no es un booleano
@@ -332,9 +342,15 @@ migraciones sobre una base vacía y falla si el modelo tiene cambios sin migrar.
 
 La demo pública usa el mismo esquema que [Prueba-Gastos](https://github.com/sebastianrdz-hash/Prueba-Gastos): **Neon** (PostgreSQL), **Render** (API en Docker) y **Vercel** (SPA). GitHub Pages no sirve: no ejecuta ASP.NET ni hospeda Postgres.
 
+| | URL |
+|---|---|
+| Cliente | https://chronos-attendance-ashy.vercel.app |
+| API | https://chronos-attendance.onrender.com |
+| Health check | https://chronos-attendance.onrender.com/health/ready |
+
 El `Dockerfile` de la raíz empaqueta la API. El cliente se publica desde `Frontend/` con `vercel.json` (rewrites del enrutador). La cadena que da Neon llega como URI (`postgresql://…`); Npgsql solo entiende pares `Host=…`, así que `CadenaDeConexion` la traduce al arrancar. El puerto lo publica Render en `PORT`.
 
-Cuando las tres piezas estén vivas, este README enlazará las URLs aquí, como en Gastos.
+**Por qué a veces tarda en abrir.** Vercel sirve archivos estáticos y responde enseguida. Render Free apaga el contenedor cuando no hay peticiones; Neon también puede suspender el compute. El primer llamado a la API tras ese silencio arranca ambas cosas y puede tardar un minuto. Un monitor HTTP cada 5 minutos a `/health/ready` mantiene el proceso despierto la mayor parte del tiempo; si el monitor se cae, el síntoma es un login lento, no una pantalla rota.
 
 ---
 
