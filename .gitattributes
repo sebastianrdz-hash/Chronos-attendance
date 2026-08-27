@@ -1,0 +1,19 @@
+# El repositorio se edita en Windows pero el CI compila en Ubuntu: normalizar los
+# finales de línea a LF evita diferencias fantasma donde el archivo entero aparece
+# modificado sin que nadie lo tocara.
+* text=auto eol=lf
+
+# Binarios: que Git no intente normalizarlos.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.snk binary
+*.dll binary
+
+# Archivos que deben conservar CRLF para las herramientas de Windows.
+*.sln text eol=crlf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
