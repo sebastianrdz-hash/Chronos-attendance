@@ -70,7 +70,7 @@ consultándola con el operador `->>` de PostgreSQL.
 [Node 20+](https://nodejs.org) y [Docker](https://www.docker.com/products/docker-desktop).
 
 ```bash
-git clone https://github.com/<tu-usuario>/chronos-attendance.git
+git clone https://github.com/sebastianrdz-hash/Chronos-attendance.git
 cd chronos-attendance
 cp .env.example .env          # en PowerShell: Copy-Item .env.example .env
 
@@ -325,6 +325,16 @@ migraciones sobre una base vacía y falla si el modelo tiene cambios sin migrar.
 - [ ] Cálculo de jornada expuesto en reportes y dashboard
 - [ ] Exportación a Excel con ClosedXML y bitácora de auditoría
 - [ ] App móvil en .NET MAUI con Shiny.Beacons para monitoreo de regiones iBeacon
+
+---
+
+## Despliegue
+
+La demo pública usa el mismo esquema que [Prueba-Gastos](https://github.com/sebastianrdz-hash/Prueba-Gastos): **Neon** (PostgreSQL), **Render** (API en Docker) y **Vercel** (SPA). GitHub Pages no sirve: no ejecuta ASP.NET ni hospeda Postgres.
+
+El `Dockerfile` de la raíz empaqueta la API. El cliente se publica desde `Frontend/` con `vercel.json` (rewrites del enrutador). La cadena que da Neon llega como URI (`postgresql://…`); Npgsql solo entiende pares `Host=…`, así que `CadenaDeConexion` la traduce al arrancar. El puerto lo publica Render en `PORT`.
+
+Cuando las tres piezas estén vivas, este README enlazará las URLs aquí, como en Gastos.
 
 ---
 

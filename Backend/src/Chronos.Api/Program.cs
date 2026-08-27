@@ -5,10 +5,20 @@ using Chronos.Api.Seguridad;
 using Chronos.Infrastructure;
 using Chronos.Infrastructure.Persistencia;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Render, Fly.io y Cloud Run asignan el puerto en tiempo de despliegue y lo publican
+// en PORT. Sin esto la aplicación escucharía en el 8080 fijo y la plataforma la
+// declararía caída porque nadie responde donde ella espera.
+var puertoAsignado = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(puertoAsignado))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{puertoAsignado}");
+}
 
 builder.Host.UseSerilog((contexto, servicios, configuracion) => configuracion
     .ReadFrom.Configuration(contexto.Configuration)
@@ -28,6 +38,17 @@ builder.Services.AddCors(cors => cors.AddPolicy(PoliticaCors, politica => politi
     .WithOrigins(origenesPermitidos)
     .AllowAnyHeader()
     .AllowAnyMethod()));
+
+builder.Services.Configure<ForwardedHeadersOptions>(opciones =>
+{
+    opciones.ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor;
+
+    // De fábrica solo se confía en proxies de loopback. En un PaaS el proxy vive en
+    // otra red, así que se vacían las listas para aceptar el salto que ya hizo la
+    // plataforma; ella sobrescribe estas cabeceras y no deja que el cliente las falsee.
+    opciones.KnownIPNetworks.Clear();
+    opciones.KnownProxies.Clear();
+});
 
 builder.Services.AgregarInfraestructura();
 builder.Services.AgregarAutenticacionJwt();
@@ -55,11 +76,18 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Va antes que todo lo demás: sin traducir X-Forwarded-Proto, la aplicación cree que
+// la petición llegó por HTTP plano y UseHttpsRedirection la reenvía a HTTPS una y otra
+// vez contra el mismo proxy, que vuelve a entregarla por HTTP.
+app.UseForwardedHeaders();
+
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
-if (app.Environment.IsDevelopment())
+// La documentación queda expuesta también fuera de desarrollo porque este proyecto es
+// una pieza de portafolio y explorar los endpoints es parte de la demostración.
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue("Api:ExponerDocumentacion", false))
 {
     app.MapOpenApi();
     app.UseSwaggerUI(ui =>
@@ -69,7 +97,8 @@ if (app.Environment.IsDevelopment())
         ui.RoutePrefix = "swagger";
     });
 }
-else
+
+if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
