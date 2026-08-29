@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { aHoraCorta } from '@/lib/formulario'
 import { Building2, CalendarClock, Moon, Network, UserMinus, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ResumenDeHoy } from './ResumenDeHoy'
 
 interface Resumen {
   empleadosActivos: number
@@ -84,6 +85,10 @@ export function PanelAdmin({ nombre }: { nombre: string }) {
           icono={Network}
           cargando={cargando}
         />
+      </div>
+
+      <div className="mt-6">
+        <ResumenDeHoy />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr]">

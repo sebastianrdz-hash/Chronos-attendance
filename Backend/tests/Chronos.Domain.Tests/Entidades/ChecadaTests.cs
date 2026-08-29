@@ -70,4 +70,56 @@ public class ChecadaTests
 
         Assert.Throws<ArgumentException>(() => checada.AjustarPorSupervisor(Guid.CreateVersion7(), "   "));
     }
+
+    [Fact]
+    public void UnRechazoDeSupervisorSacaLaChecadaDeLaJornadaSinBorrarla()
+    {
+        var checada = Nueva();
+        checada.AgregarSenal(TipoSenal.CodigoQr, ResultadoSenal.Confirmada);
+
+        var supervisor = Guid.CreateVersion7();
+        checada.RechazarPorSupervisor(supervisor, "El empleado estaba de vacaciones ese día.");
+
+        Assert.Equal(EstadoChecada.Rechazada, checada.Estado);
+        Assert.False(checada.CuentaParaJornada);
+        Assert.Equal(supervisor, checada.AjustadaPorUsuarioId);
+        Assert.Equal("El empleado estaba de vacaciones ese día.", checada.MotivoAjuste);
+    }
+
+    [Fact]
+    public void UnRechazoExigeMotivo()
+    {
+        var checada = Nueva();
+
+        Assert.Throws<ArgumentException>(() => checada.RechazarPorSupervisor(Guid.CreateVersion7(), ""));
+    }
+
+    [Fact]
+    public void UnaSenalTardiaNoResucitaUnaChecadaRechazadaEnRevision()
+    {
+        // El caso perverso: rechazada por un humano, el estado coincide con el que produce
+        // una evaluación automática débil. Si Reevaluar mirara el estado en vez de quién
+        // decidió, una señal que llegue tarde borraría el dictamen sin dejar rastro.
+        var checada = Nueva();
+        checada.AgregarSenal(TipoSenal.CodigoQr, ResultadoSenal.Confirmada);
+        checada.RechazarPorSupervisor(Guid.CreateVersion7(), "Sin evidencia de presencia en sede.");
+
+        checada.AgregarSenal(TipoSenal.WebAuthn, ResultadoSenal.Confirmada);
+
+        Assert.Equal(EstadoChecada.Rechazada, checada.Estado);
+        Assert.False(checada.CuentaParaJornada);
+    }
+
+    [Fact]
+    public void SoloEsperaRevisionMientrasNadieLaDictamine()
+    {
+        var checada = Nueva();
+        checada.AgregarSenal(TipoSenal.CodigoQr, ResultadoSenal.Confirmada);
+
+        Assert.True(checada.EsperaRevision);
+
+        checada.AjustarPorSupervisor(Guid.CreateVersion7(), "Confirmado con el jefe de sede.");
+
+        Assert.False(checada.EsperaRevision);
+    }
 }

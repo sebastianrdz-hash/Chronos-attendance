@@ -24,6 +24,12 @@ public class ChronosDbContext(DbContextOptions<ChronosDbContext> options)
 
     public DbSet<CredencialWebAuthn> CredencialesWebAuthn => Set<CredencialWebAuthn>();
 
+    public DbSet<NonceQrConsumido> NoncesQrConsumidos => Set<NonceQrConsumido>();
+
+    public DbSet<DesafioWebAuthn> DesafiosWebAuthn => Set<DesafioWebAuthn>();
+
+    public DbSet<AsientoBitacora> Bitacora => Set<AsientoBitacora>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

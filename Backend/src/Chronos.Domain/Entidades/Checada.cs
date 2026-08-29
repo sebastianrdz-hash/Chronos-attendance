@@ -74,7 +74,10 @@ public class Checada : EntidadBase
         PuntajeConfianza = evaluacion.Puntaje;
         NivelConfianza = evaluacion.Nivel;
 
-        if (Estado != EstadoChecada.AjustadaPorSupervisor)
+        // Un dictamen humano manda sobre el puntaje. Se comprueba por quién decidió y no
+        // por el estado resultante, porque revisar también puede terminar en rechazo y ese
+        // estado es indistinguible del que produciría una evaluación automática.
+        if (AjustadaPorUsuarioId is null)
         {
             Estado = evaluacion.Estado;
         }
@@ -91,6 +94,27 @@ public class Checada : EntidadBase
         MotivoAjuste = motivo;
         ActualizadoUtc = DateTimeOffset.UtcNow;
     }
+
+    /// <summary>
+    /// Descarta el fichaje tras una revisión. La checada no se borra: deja de contar para
+    /// la jornada pero sigue ahí, con el motivo y el nombre de quien decidió, porque el
+    /// registro de lo que se rechazó importa tanto como el de lo que se aceptó.
+    /// </summary>
+    public void RechazarPorSupervisor(Guid usuarioId, string motivo)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(motivo);
+
+        Estado = EstadoChecada.Rechazada;
+        AjustadaPorUsuarioId = usuarioId;
+        MotivoAjuste = motivo;
+        ActualizadoUtc = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Una checada ya resuelta no vuelve a la bandeja. Sin esto, dos revisores podrían
+    /// pisarse el dictamen sin enterarse.
+    /// </summary>
+    public bool EsperaRevision => Estado == EstadoChecada.RequiereRevision;
 
     /// <summary>Las checadas rechazadas no alimentan el cálculo de jornada.</summary>
     public bool CuentaParaJornada =>

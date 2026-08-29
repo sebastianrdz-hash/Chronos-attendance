@@ -155,3 +155,181 @@ export interface MiPerfil {
   correo: string
   ultimoAccesoUtc: string | null
 }
+
+// --- Fichaje ---
+
+export type TipoChecada = 'Entrada' | 'Salida' | 'InicioDescanso' | 'FinDescanso'
+
+export type EstadoChecada =
+  | 'Rechazada'
+  | 'RequiereRevision'
+  | 'Verificada'
+  | 'AjustadaPorSupervisor'
+
+export type NivelConfianza = 'Nula' | 'Baja' | 'Media' | 'Alta'
+
+export type TipoSenal =
+  | 'CodigoQr'
+  | 'WebAuthn'
+  | 'BeaconBle'
+  | 'Geocerca'
+  | 'RedWifi'
+  | 'RegistroManual'
+
+export type ResultadoSenal = 'Confirmada' | 'Fallida' | 'NoDisponible' | 'Sospechosa'
+
+export type MotivoRechazoQr =
+  | 'Ninguno'
+  | 'FormatoInvalido'
+  | 'FirmaInvalida'
+  | 'Caducado'
+  | 'NonceReusado'
+  | 'SedeNoCorresponde'
+
+export interface CodigoKiosco {
+  token: string
+  /** PNG en base64, sin el prefijo de data URI. */
+  imagenPng: string
+  emitidoUtc: string
+  expiraUtc: string
+  segundosRefresco: number
+  sedeId: string
+  sedeNombre: string
+}
+
+export interface Senal {
+  tipo: TipoSenal
+  tipoNombre: string
+  resultado: ResultadoSenal
+  pesoAplicado: number
+  capturadaUtc: string
+  detalleJson: string | null
+}
+
+export interface Checada {
+  id: string
+  tipo: TipoChecada
+  momentoUtc: string
+  diaLaboral: string
+  estado: EstadoChecada
+  puntajeConfianza: number
+  nivelConfianza: NivelConfianza
+  sedeId: string | null
+  sedeNombre: string | null
+  observaciones: string | null
+  senales: Senal[]
+}
+
+export interface RechazoChecada {
+  motivo: MotivoRechazoQr
+  mensaje: string
+}
+
+export interface Credencial {
+  id: string
+  nombreAmigable: string | null
+  tipoDispositivo: string | null
+  creadoUtc: string
+  ultimoUsoUtc: string | null
+  contadorFirmas: number
+  activa: boolean
+}
+
+/**
+ * Las opciones de WebAuthn se reenvían casi tal cual al navegador. Solo se declaran los
+ * campos que hay que traducir de base64url a binario; el resto viaja intacto y tiparlo
+ * aquí sería duplicar la norma sin ganar nada.
+ */
+export interface OpcionesEnrolamiento {
+  challenge: string
+  user: { id: string; name: string; displayName: string }
+  excludeCredentials?: { id: string; type: string }[]
+}
+
+export interface OpcionesAutenticacion {
+  challenge: string
+  allowCredentials?: { id: string; type: string }[]
+}
+
+// --- Revisión y bitácora ---
+
+export interface ChecadaPorRevisar {
+  id: string
+  empleadoId: string
+  empleadoNombre: string
+  numeroEmpleado: string
+  departamentoNombre: string
+  tipo: TipoChecada
+  momentoUtc: string
+  diaLaboral: string
+  estado: EstadoChecada
+  puntajeConfianza: number
+  nivelConfianza: NivelConfianza
+  sedeNombre: string | null
+  senales: Senal[]
+}
+
+export type AccionAuditada =
+  | 'ChecadaAprobada'
+  | 'ChecadaRechazada'
+  | 'CredencialRevocada'
+  | 'EmpleadoDadoDeAlta'
+  | 'EmpleadoDadoDeBaja'
+  | 'AccesoReiniciado'
+
+export interface AsientoBitacora {
+  id: string
+  ocurridoUtc: string
+  accion: AccionAuditada
+  accionNombre: string
+  entidad: string
+  entidadId: string | null
+  usuarioCorreo: string | null
+  motivo: string | null
+}
+
+// --- Asistencia ---
+
+export type EstadoAsistencia =
+  | 'Descanso'
+  | 'Completa'
+  | 'Retardo'
+  | 'SalidaAnticipada'
+  | 'JornadaIncompleta'
+  | 'Falta'
+
+export interface AsistenciaDelDia {
+  empleadoId: string
+  nombreCompleto: string
+  numeroEmpleado: string
+  departamentoNombre: string
+  sedeNombre: string
+  turnoNombre: string | null
+  estado: EstadoAsistencia
+  estadoNombre: string
+  entrada: string | null
+  salida: string | null
+  horasTrabajadas: number
+  horasExtra: number
+  minutosRetardo: number
+  minutosSalidaAnticipada: number
+  requiereRevision: boolean
+  confianzaMinima: NivelConfianza
+}
+
+export interface ResumenAsistencia {
+  dia: string
+  plantilla: number
+  presentes: number
+  faltas: number
+  retardos: number
+  jornadasIncompletas: number
+  pendientesDeRevision: number
+  horasTrabajadas: number
+  horasExtra: number
+}
+
+export interface Asistencia {
+  resumen: ResumenAsistencia
+  empleados: AsistenciaDelDia[]
+}

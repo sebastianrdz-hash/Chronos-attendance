@@ -43,6 +43,24 @@ public static class ClienteAutenticado
     public static async Task<T> LeerAsync<T>(this HttpResponseMessage respuesta) =>
         (await respuesta.Content.ReadFromJsonAsync<T>(Json))!;
 
+    /// <summary>
+    /// Como EnsureSuccessStatusCode, pero incluyendo el cuerpo en el mensaje. Un 400 a
+    /// secas no dice qué campo se rechazó, y perseguirlo a ciegas cuesta más que este
+    /// puñado de líneas.
+    /// </summary>
+    public static async Task<HttpResponseMessage> AsegurarExitoAsync(this HttpResponseMessage respuesta)
+    {
+        if (respuesta.IsSuccessStatusCode)
+        {
+            return respuesta;
+        }
+
+        var cuerpo = await respuesta.Content.ReadAsStringAsync();
+
+        throw new Xunit.Sdk.XunitException(
+            $"{(int)respuesta.StatusCode} {respuesta.StatusCode} en {respuesta.RequestMessage?.RequestUri}\n{cuerpo}");
+    }
+
     /// <summary>Errores por campo de un ValidationProblemDetails.</summary>
     public static async Task<Dictionary<string, string[]>> ErroresAsync(this HttpResponseMessage respuesta)
     {

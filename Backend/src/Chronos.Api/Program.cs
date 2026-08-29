@@ -1,7 +1,7 @@
-using System.Text.Json.Serialization;
 using Chronos.Api.Endpoints;
 using Chronos.Api.Extensiones;
 using Chronos.Api.Seguridad;
+using Chronos.Api.Serializacion;
 using Chronos.Infrastructure;
 using Chronos.Infrastructure.Persistencia;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -18,6 +18,24 @@ var puertoAsignado = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(puertoAsignado))
 {
     builder.WebHost.UseUrls($"http://0.0.0.0:{puertoAsignado}");
+}
+else if (builder.Environment.IsDevelopment())
+{
+    // Escuchar en todas las interfaces, y no solo en loopback, deja que un celular de la
+    // misma red alcance la API. El HTTPS es condicional porque el certificado lo emite un
+    // script aparte: sin él la API sigue levantando en HTTP y solo se pierde el acceso
+    // desde el celular, que es justo lo que ese script habilita.
+    var certificadoDesarrollo = CertificadoDesarrollo.Cargar(builder.Environment.ContentRootPath);
+
+    builder.WebHost.ConfigureKestrel(kestrel =>
+    {
+        kestrel.ListenAnyIP(5080);
+
+        if (certificadoDesarrollo is not null)
+        {
+            kestrel.ListenAnyIP(7080, escucha => escucha.UseHttps(certificadoDesarrollo));
+        }
+    });
 }
 
 builder.Host.UseSerilog((contexto, servicios, configuracion) => configuracion
@@ -54,9 +72,13 @@ builder.Services.AgregarInfraestructura();
 builder.Services.AgregarAutenticacionJwt();
 builder.Services.AddScoped<IResolutorAcceso, ResolutorAcceso>();
 
+// El reloj se inyecta en vez de llamar a DateTimeOffset.UtcNow desde los endpoints: las
+// pruebas del fichaje necesitan adelantar el tiempo para provocar un código caducado.
+builder.Services.AddSingleton(TimeProvider.System);
+
 builder.Services.ConfigureHttpJsonOptions(opciones =>
 {
-    opciones.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    opciones.SerializerOptions.Converters.Add(new ConvertidorEnumsDeChronos());
 });
 
 builder.Services.AddProblemDetails();
@@ -124,6 +146,10 @@ app.MapearDepartamentos();
 app.MapearTurnos();
 app.MapearEmpleados();
 app.MapearPerfil();
+app.MapearFichaje();
+app.MapearWebAuthn();
+app.MapearRevision();
+app.MapearAsistencia();
 
 if (app.Configuration.GetValue("Semilla:EjecutarAlIniciar", true))
 {

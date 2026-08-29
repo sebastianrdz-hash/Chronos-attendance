@@ -1,3 +1,5 @@
+using Chronos.Infrastructure.Auditoria;
+using Chronos.Infrastructure.Fichaje;
 using Chronos.Infrastructure.Identidad;
 using Chronos.Infrastructure.Persistencia;
 using Chronos.Infrastructure.Seguridad;
@@ -51,7 +53,22 @@ public static class InyeccionDependencias
             .BindConfiguration(OpcionesJwt.Seccion)
             .ValidateDataAnnotations();
 
+        servicios.AddOptions<OpcionesQr>()
+            .BindConfiguration(OpcionesQr.Seccion)
+            .ValidateDataAnnotations();
+
+        servicios.AddOptions<OpcionesWebAuthn>()
+            .BindConfiguration(OpcionesWebAuthn.Seccion)
+            .ValidateDataAnnotations();
+
         servicios.AddScoped<IGeneradorTokens, GeneradorTokens>();
+
+        // Sin estado más allá de sus opciones: una sola instancia sirve a todas las
+        // peticiones y evita rehacer la llave en cada emisión.
+        servicios.AddSingleton<IServicioQr, ServicioQr>();
+        servicios.AddSingleton<ILectorImagenQr, LectorImagenQr>();
+        servicios.AddSingleton<IServicioWebAuthn, ServicioWebAuthn>();
+        servicios.AddScoped<IBitacora, BitacoraEnBaseDeDatos>();
 
         return servicios;
     }

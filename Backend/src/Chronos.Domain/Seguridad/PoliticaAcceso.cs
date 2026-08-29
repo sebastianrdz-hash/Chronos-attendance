@@ -120,6 +120,87 @@ public static class PoliticaAcceso
             : ResultadoAcceso.Negar(SoloAdministra);
     }
 
+    /// <summary>
+    /// Quién puede poner un kiosco a emitir códigos. No es una pantalla inocente: quien
+    /// la abre obtiene un flujo de QR válidos para esa sede, así que un empleado con el
+    /// enlace podría fichar desde su casa. Por eso se limita a quien administra la sede.
+    /// </summary>
+    public static ResultadoAcceso PuedeMostrarKiosco(ContextoAcceso contexto, Guid sedeId)
+    {
+        if (contexto.EsAdmin)
+        {
+            return ResultadoAcceso.Permitir();
+        }
+
+        if (!contexto.EsSupervisor)
+        {
+            return ResultadoAcceso.Negar("Solo un administrador o un supervisor puede abrir un kiosco.");
+        }
+
+        if (contexto.SedeId is null)
+        {
+            return ResultadoAcceso.Negar("El supervisor no tiene una sede asignada.");
+        }
+
+        return contexto.SedeId == sedeId
+            ? ResultadoAcceso.Permitir()
+            : ResultadoAcceso.Negar("Un supervisor solo puede abrir el kiosco de su propia sede.");
+    }
+
+    /// <summary>
+    /// Fichar es de cualquiera que tenga expediente, incluidos administradores y
+    /// supervisores: también son empleados y también marcan su asistencia.
+    /// </summary>
+    public static ResultadoAcceso PuedeFichar(ContextoAcceso contexto) =>
+        contexto.EmpleadoId is null
+            ? ResultadoAcceso.Negar("Esta cuenta no tiene un expediente de empleado y no puede fichar.")
+            : ResultadoAcceso.Permitir();
+
+    /// <summary>
+    /// Quién puede ver la asistencia ajena. Coincide con quien ya puede listar plantilla:
+    /// las horas trabajadas de una persona no son más sensibles que su expediente.
+    /// </summary>
+    public static ResultadoAcceso PuedeVerAsistencia(ContextoAcceso contexto) =>
+        contexto.EsAdmin || contexto.EsSupervisor
+            ? ResultadoAcceso.Permitir()
+            : ResultadoAcceso.Negar("La asistencia de la plantilla solo la consultan administradores y supervisores.");
+
+    /// <summary>
+    /// Quién dictamina una checada dudosa.
+    /// <para>
+    /// Nadie resuelve la suya propia, ni siquiera el administrador. Todo el modelo de
+    /// confianza se apoya en que una checada débil la valide alguien distinto de quien la
+    /// generó; permitir la autoaprobación convertiría el umbral en un trámite. Es la misma
+    /// separación de funciones que ya impide que un admin se dé de baja a sí mismo.
+    /// </para>
+    /// <para>
+    /// El supervisor además queda acotado a su departamento, igual que para el resto de
+    /// sus escrituras.
+    /// </para>
+    /// </summary>
+    public static ResultadoAcceso PuedeRevisarChecada(
+        ContextoAcceso contexto,
+        Guid empleadoDeLaChecada,
+        Guid departamentoDelEmpleado)
+    {
+        if (contexto.EmpleadoId == empleadoDeLaChecada)
+        {
+            return ResultadoAcceso.Negar("Nadie puede dictaminar su propia checada.");
+        }
+
+        if (contexto.EsAdmin)
+        {
+            return ResultadoAcceso.Permitir();
+        }
+
+        if (!contexto.EsSupervisor)
+        {
+            return ResultadoAcceso.Negar("Solo un administrador o un supervisor puede revisar checadas.");
+        }
+
+        return AlcanceDelSupervisor(contexto, departamentoDelEmpleado);
+    }
+
     private static ResultadoAcceso AlcanceDelSupervisor(ContextoAcceso contexto, Guid departamentoId)
     {
         if (contexto.DepartamentoId is null)

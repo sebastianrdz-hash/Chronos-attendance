@@ -167,6 +167,47 @@ public class PoliticaAccesoTests
     }
 
     [Fact]
+    public void NadieDictaminaSuPropiaChecada()
+    {
+        // Ni siquiera el administrador: es la regla que sostiene todo el umbral de confianza.
+        var adminSobreSiMismo = ContextoAcceso.Para(RolChronos.Admin, empleadoId: DiegoId, departamentoId: Sistemas);
+
+        var decision = PoliticaAcceso.PuedeRevisarChecada(adminSobreSiMismo, DiegoId, Sistemas);
+
+        Assert.False(decision.Permitido);
+        Assert.Contains("su propia checada", decision.Motivo);
+    }
+
+    [Fact]
+    public void ElAdminDictaminaLaChecadaDeCualquiera()
+    {
+        Assert.True(PoliticaAcceso.PuedeRevisarChecada(Admin, CarlaId, Nomina).Permitido);
+    }
+
+    [Fact]
+    public void ElSupervisorDictaminaSoloDentroDeSuDepartamento()
+    {
+        Assert.True(PoliticaAcceso.PuedeRevisarChecada(SupervisorDeSistemas, CarlaId, Sistemas).Permitido);
+        Assert.False(PoliticaAcceso.PuedeRevisarChecada(SupervisorDeSistemas, CarlaId, Nomina).Permitido);
+    }
+
+    [Fact]
+    public void UnEmpleadoNoDictaminaChecadasAjenas()
+    {
+        var decision = PoliticaAcceso.PuedeRevisarChecada(EmpleadaCarla, DiegoId, Sistemas);
+
+        Assert.False(decision.Permitido);
+    }
+
+    [Fact]
+    public void LaAsistenciaAjenaEsParaAdminYSupervisor()
+    {
+        Assert.True(PoliticaAcceso.PuedeVerAsistencia(Admin).Permitido);
+        Assert.True(PoliticaAcceso.PuedeVerAsistencia(SupervisorDeSistemas).Permitido);
+        Assert.False(PoliticaAcceso.PuedeVerAsistencia(EmpleadaCarla).Permitido);
+    }
+
+    [Fact]
     public void ElRolMasAltoManda()
     {
         Assert.Equal(RolChronos.Admin, Roles_MayorPrivilegio(["Empleado", "Admin"]));

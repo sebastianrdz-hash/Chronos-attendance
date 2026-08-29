@@ -487,6 +487,9 @@ $RECYCLE.BIN/
 .env.local
 *.env.local
 
+# Certificados de desarrollo: los emite scripts/certificados-dev.ps1 y son de esta máquina
+certificados/
+
 # Cliente React
 node_modules/
 dist/

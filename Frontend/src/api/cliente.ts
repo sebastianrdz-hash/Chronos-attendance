@@ -1,15 +1,27 @@
 import type {
+  AsientoBitacora,
+  Asistencia,
+  AsistenciaDelDia,
+  Checada,
+  ChecadaPorRevisar,
+  CodigoKiosco,
+  Credencial,
   Departamento,
   Empleado,
   MiPerfil,
+  MotivoRechazoQr,
+  OpcionesAutenticacion,
+  OpcionesEnrolamiento,
   ParametrosLista,
   PerfilUsuario,
   PoliticaConfianza,
   ProblemDetails,
+  RechazoChecada,
   RespuestaAltaEmpleado,
   RespuestaLogin,
   ResultadoPaginado,
   Sede,
+  TipoChecada,
   Turno,
 } from './tipos'
 
@@ -37,6 +49,20 @@ export class ErrorValidacion extends ErrorApi {
     super(message, 400)
     this.name = 'ErrorValidacion'
     this.errores = errores
+  }
+}
+
+/**
+ * Un fichaje que el servidor no aceptó. Conserva el motivo del dominio porque cada caso
+ * pide una reacción distinta de quien está frente a la cámara.
+ */
+export class ErrorFichaje extends ErrorApi {
+  readonly motivo: MotivoRechazoQr
+
+  constructor(rechazo: RechazoChecada) {
+    super(rechazo.mensaje, 422)
+    this.name = 'ErrorFichaje'
+    this.motivo = rechazo.motivo
   }
 }
 
@@ -83,6 +109,14 @@ async function construirError(respuesta: Response): Promise<ErrorApi> {
     return new ErrorApi(`Error ${respuesta.status}`, respuesta.status)
   }
 
+  // El rechazo de un fichaje no es un ProblemDetails: trae el motivo del dominio para que
+  // la pantalla pueda distinguir un código vencido —que se arregla volviendo a escanear—
+  // de una firma inválida, que no.
+  const posibleRechazo = problema as unknown as RechazoChecada
+  if (posibleRechazo.motivo && posibleRechazo.mensaje) {
+    return new ErrorFichaje(posibleRechazo)
+  }
+
   if (problema.errors && Object.keys(problema.errors).length > 0) {
     return new ErrorValidacion(
       problema.detail ?? problema.title ?? 'Revisa los datos del formulario.',
@@ -97,7 +131,7 @@ async function construirError(respuesta: Response): Promise<ErrorApi> {
 }
 
 /** Omite los parámetros vacíos para no ensuciar la URL con `buscar=`. */
-function consulta(parametros: ParametrosLista = {}): string {
+function consulta(parametros: object = {}): string {
   const query = new URLSearchParams()
 
   for (const [clave, valor] of Object.entries(parametros)) {
@@ -195,6 +229,63 @@ export const api = {
 
     reiniciarAcceso: (id: string) =>
       pedir<RespuestaAltaEmpleado>(`/empleados/${id}/reiniciar-acceso`, { method: 'POST' }),
+  },
+
+  kiosco: {
+    codigo: (sedeId: string) => pedir<CodigoKiosco>(`/kiosco/${sedeId}/codigo`),
+  },
+
+  checadas: {
+    porQr: (token: string, tipo?: TipoChecada, asercion?: unknown) =>
+      pedir<Checada>('/checadas/qr', { method: 'POST', body: json({ token, tipo, asercion }) }),
+
+    mias: (parametros?: ParametrosLista) =>
+      pedir<ResultadoPaginado<Checada>>(`/checadas/mias${consulta(parametros)}`),
+  },
+
+  webauthn: {
+    opcionesEnrolamiento: (nombreAmigable: string) =>
+      pedir<{ opciones: OpcionesEnrolamiento }>('/webauthn/enrolamiento/opciones', {
+        method: 'POST',
+        body: json({ nombreAmigable }),
+      }),
+
+    completarEnrolamiento: (respuesta: unknown) =>
+      pedir<Credencial>('/webauthn/enrolamiento', {
+        method: 'POST',
+        body: json({ respuesta }),
+      }),
+
+    opcionesAutenticacion: () =>
+      pedir<{ opciones: OpcionesAutenticacion }>('/webauthn/autenticacion/opciones', {
+        method: 'POST',
+      }),
+
+    credenciales: () => pedir<Credencial[]>('/webauthn/credenciales'),
+
+    revocar: (id: string) => pedir<void>(`/webauthn/credenciales/${id}`, { method: 'DELETE' }),
+  },
+
+  revision: {
+    pendientes: (parametros?: ParametrosLista) =>
+      pedir<ResultadoPaginado<ChecadaPorRevisar>>(`/revision/pendientes${consulta(parametros)}`),
+
+    aprobar: (id: string, motivo: string) =>
+      pedir<ChecadaPorRevisar>(`/revision/${id}/aprobar`, { method: 'POST', body: json({ motivo }) }),
+
+    rechazar: (id: string, motivo: string) =>
+      pedir<ChecadaPorRevisar>(`/revision/${id}/rechazar`, { method: 'POST', body: json({ motivo }) }),
+
+    bitacora: (parametros?: ParametrosLista) =>
+      pedir<ResultadoPaginado<AsientoBitacora>>(`/revision/bitacora${consulta(parametros)}`),
+  },
+
+  asistencia: {
+    delDia: (filtros: { fecha?: string; sedeId?: string; departamentoId?: string } = {}) =>
+      pedir<Asistencia>(`/asistencia/dia${consulta(filtros)}`),
+
+    mia: (desde?: string, hasta?: string) =>
+      pedir<AsistenciaDelDia[]>(`/asistencia/mia${consulta({ desde, hasta })}`),
   },
 
   miPerfil: () => pedir<MiPerfil>('/perfil'),

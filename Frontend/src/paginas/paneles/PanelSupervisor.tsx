@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { Info, ShieldCheck, UserMinus, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ResumenDeHoy } from './ResumenDeHoy'
 
 interface Resumen {
   equipo: Empleado[]
@@ -83,6 +84,10 @@ export function PanelSupervisor({ usuario }: { usuario: PerfilUsuario }) {
           icono={ShieldCheck}
           cargando={cargando}
         />
+      </div>
+
+      <div className="mt-6">
+        <ResumenDeHoy sedeId={usuario.sedeId} />
       </div>
 
       <Alert className="mt-6">

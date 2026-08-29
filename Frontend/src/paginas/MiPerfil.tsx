@@ -18,6 +18,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { CredencialesWebAuthn } from './perfil/CredencialesWebAuthn'
 
 const esquema = z
   .object({
@@ -240,6 +241,10 @@ export function MiPerfil() {
             <FormularioContrasena />
           </CardContent>
         </Card>
+
+        <div className="lg:col-span-2">
+          <CredencialesWebAuthn />
+        </div>
       </div>
     </>
   )

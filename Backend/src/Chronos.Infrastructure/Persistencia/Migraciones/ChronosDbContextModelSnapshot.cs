@@ -22,6 +22,67 @@ namespace Chronos.Infrastructure.Persistencia.Migraciones
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Chronos.Domain.Entidades.AsientoBitacora", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Accion")
+                        .HasColumnType("integer")
+                        .HasColumnName("accion");
+
+                    b.Property<string>("DatosJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("datos_json");
+
+                    b.Property<string>("DireccionIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("direccion_ip");
+
+                    b.Property<string>("Entidad")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("entidad");
+
+                    b.Property<Guid?>("EntidadId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entidad_id");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo");
+
+                    b.Property<DateTimeOffset>("OcurridoUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocurrido_utc");
+
+                    b.Property<string>("UsuarioCorreo")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("usuario_correo");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bitacora");
+
+                    b.HasIndex("OcurridoUtc")
+                        .IsDescending()
+                        .HasDatabaseName("ix_bitacora_ocurrido_utc");
+
+                    b.HasIndex("Entidad", "EntidadId")
+                        .HasDatabaseName("ix_bitacora_entidad_entidad_id");
+
+                    b.ToTable("bitacora", (string)null);
+                });
+
             modelBuilder.Entity("Chronos.Domain.Entidades.Checada", b =>
                 {
                     b.Property<Guid>("Id")
@@ -230,6 +291,52 @@ namespace Chronos.Infrastructure.Persistencia.Migraciones
                     b.ToTable("departamentos", (string)null);
                 });
 
+            modelBuilder.Entity("Chronos.Domain.Entidades.DesafioWebAuthn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreadoUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creado_utc");
+
+                    b.Property<Guid>("EmpleadoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("empleado_id");
+
+                    b.Property<DateTimeOffset>("ExpiraUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_utc");
+
+                    b.Property<string>("NombreDispositivo")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nombre_dispositivo");
+
+                    b.Property<string>("OpcionesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("opciones_json");
+
+                    b.Property<int>("Proposito")
+                        .HasColumnType("integer")
+                        .HasColumnName("proposito");
+
+                    b.HasKey("Id")
+                        .HasName("pk_desafios_webauthn");
+
+                    b.HasIndex("ExpiraUtc")
+                        .HasDatabaseName("ix_desafios_webauthn_expira_utc");
+
+                    b.HasIndex("EmpleadoId", "Proposito")
+                        .IsUnique()
+                        .HasDatabaseName("ix_desafios_webauthn_empleado_id_proposito");
+
+                    b.ToTable("desafios_webauthn", (string)null);
+                });
+
             modelBuilder.Entity("Chronos.Domain.Entidades.Empleado", b =>
                 {
                     b.Property<Guid>("Id")
@@ -333,6 +440,41 @@ namespace Chronos.Infrastructure.Persistencia.Migraciones
                         .HasFilter("usuario_id IS NOT NULL");
 
                     b.ToTable("empleados", (string)null);
+                });
+
+            modelBuilder.Entity("Chronos.Domain.Entidades.NonceQrConsumido", b =>
+                {
+                    b.Property<Guid>("Nonce")
+                        .HasColumnType("uuid")
+                        .HasColumnName("nonce");
+
+                    b.Property<Guid>("ChecadaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checada_id");
+
+                    b.Property<DateTimeOffset>("ConsumidoUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumido_utc");
+
+                    b.Property<Guid>("EmpleadoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("empleado_id");
+
+                    b.Property<DateTimeOffset>("ExpiraUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_utc");
+
+                    b.Property<Guid>("SedeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sede_id");
+
+                    b.HasKey("Nonce")
+                        .HasName("pk_nonces_qr_consumidos");
+
+                    b.HasIndex("ExpiraUtc")
+                        .HasDatabaseName("ix_nonces_qr_consumidos_expira_utc");
+
+                    b.ToTable("nonces_qr_consumidos", (string)null);
                 });
 
             modelBuilder.Entity("Chronos.Domain.Entidades.Sede", b =>
@@ -802,6 +944,16 @@ namespace Chronos.Infrastructure.Persistencia.Migraciones
                         .HasConstraintName("fk_departamentos_sedes_sede_id");
 
                     b.Navigation("Sede");
+                });
+
+            modelBuilder.Entity("Chronos.Domain.Entidades.DesafioWebAuthn", b =>
+                {
+                    b.HasOne("Chronos.Domain.Entidades.Empleado", null)
+                        .WithMany()
+                        .HasForeignKey("EmpleadoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_desafios_webauthn_empleados_empleado_id");
                 });
 
             modelBuilder.Entity("Chronos.Domain.Entidades.Empleado", b =>
